@@ -1,0 +1,28 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+*.lock
+
+# Android
+*.iml
+*.class
+.gradle/
+local.properties
+.idea/
+*.log
+
+# Example app build
+example/build/
+example/.dart_tool/
+example/android/.gradle/
+example/android/app/build/
+
+# IDE
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
