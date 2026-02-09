@@ -1,0 +1,20 @@
+name: wizzit_emv_flutter_example
+description: Demonstrates how to use the wizzit_emv_flutter plugin.
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  wizzit_emv_flutter:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

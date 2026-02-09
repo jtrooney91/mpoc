@@ -1,0 +1,84 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+// Add flatDir repository for local AAR files
+repositories {
+    flatDir {
+        dirs '../../../android/libs'
+    }
+}
+
+android {
+    // Use same namespace/applicationId as native app for SDK compatibility
+    namespace = "com.wizzitdigital.emv.sdk.terminology"
+    compileSdk = 34
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    // Use same signing as native app
+    signingConfigs {
+        debug {
+            storeFile file('../../../../app/keystore/efficacy.jks')
+            storePassword 'm@cburg3r'
+            keyAlias = 'key0'
+            keyPassword 'm@cburg3r'
+        }
+        release {
+            storeFile file('../../../../app/keystore/efficacy.jks')
+            storePassword 'm@cburg3r'
+            keyAlias = 'key0'
+            keyPassword 'm@cburg3r'
+        }
+    }
+
+    defaultConfig {
+        applicationId = "com.wizzitdigital.emv.sdk.terminology"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    buildTypes {
+        debug {
+            signingConfig = signingConfigs.debug
+        }
+        release {
+            signingConfig = signingConfigs.release
+        }
+    }
+}
+
+dependencies {
+    // EMV SDK AAR files (same as native app - no dexguard-runtime)
+    implementation(name: 'wizzitEmvSdk-1.7.3-release-protected_staging_eu_16072024', ext: 'aar')
+    implementation(name: 'wizzitEmvSdkMasterCard-2.1.0-release-protected_12072024 1', ext: 'aar')
+    implementation(name: 'wizzitEmvSdkVisa-1.0.6-release', ext: 'aar')
+    implementation(name: 'sonic-sdk-release-1.3.0', ext: 'aar')
+    implementation(name: 'VisaSensoryBranding', ext: 'aar')
+    
+    // Dependencies from native app
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.appcompat:appcompat:1.4.2'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.1'
+    implementation 'androidx.security:security-crypto:1.0.0-rc01'
+    implementation 'org.bouncycastle:bcpkix-jdk15on:1.56'
+    implementation 'com.google.code.gson:gson:2.8.0'
+    implementation 'org.conscrypt:conscrypt-android:2.2.1'
+    implementation 'com.google.zxing:core:3.4.0'
+}
+
+flutter {
+    source = "../.."
+}
