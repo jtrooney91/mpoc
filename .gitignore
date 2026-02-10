@@ -18,7 +18,8 @@ example/.dart_tool/
 example/android/.gradle/
 example/android/app/build/
 example/build/app/
-
+example/build/
+*/build/
 # IDE
 .vscode/
 *.swp
