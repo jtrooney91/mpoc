@@ -17,7 +17,7 @@ example/build/
 example/.dart_tool/
 example/android/.gradle/
 example/android/app/build/
-example/build/app
+example/build/app/
 
 # IDE
 .vscode/
