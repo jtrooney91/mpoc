@@ -56,6 +56,10 @@ android {
         }
         release {
             signingConfig = signingConfigs.release
+            // Disable minification due to incompatible ProGuard rules in wizzitEmvSdkVisa library
+            // The library's proguard.txt contains -dontdiversifyrasp which R8 doesn't recognize
+            minifyEnabled = false
+            shrinkResources = false
         }
     }
 }

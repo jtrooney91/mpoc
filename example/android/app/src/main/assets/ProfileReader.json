@@ -1,0 +1,48 @@
+{"READER_PROFILES" : [{
+    "name": "MPOS",
+    "type": "Multi",
+    "initReaderData": "initNoData",
+    "contactlessMCProfile": "PPS_MChip1",
+    "terminalTags": ["Additional Terminal Capabilities:7000802000",
+        "Terminal Capabilities:2040C8",
+        "Interface Device Serial Number:3031303031313031",
+        "Merchant Category Code:5812",
+        "Merchant Name and Location:4D65726368616E74204E616D65203A204C6F636174696F6E",  // Merchant Name : Location
+        "Terminal Country Code:0710",                         // ISO 3116 Country Code for Belgium
+        "Terminal Identification:3130313130303130",
+        "Transaction Category Code:52",                      // Retail Sale
+        "Terminal Type:21",                                  // Online only merchant attended
+        "Transaction Type:TRANSACTION_TYPE_PURCHASE"]
+}, {
+    "name": "PPS_MChip1",
+    "show": "V3Test",
+    "type": "Single",
+    "initReaderData": "initMposTerm",
+    "transactionData": [{
+        "transactionType": [TRANSACTION_TYPE_PURCHASE, TRANSACTION_TYPE_PURCHASE_WITH_CASHBACK, TRANSACTION_TYPE_BALANCE_INQUIRY],
+        "supportedCombinations": [{
+            "aid": "A0000000041010",
+            "minlen": 7,
+            "product": "MasterCard credit or debit",
+            "asi": true,
+            "kernelID": "02",
+            "data": ["ContactlessMposPilot", "KernelConfig:20", "ReaderCTLOndevice:000050000000", "ReaderCTLNoOndevice:000050000000",
+                "TerminalCountryCode:0710", "TerminalRiskManagementData:6C00800000000000","TACDefault:F45084800C","TACDenial:0000000000",
+                "TACOnline:F45084800C","TerminalCapabilities:2040C8"]
+        }]
+    },
+        {
+            "transactionType": [TRANSACTION_TYPE_REFUND],
+            "supportedCombinations": [{
+                "aid": "A0000000041010",
+                "minlen": 7,
+                "product": "MasterCard credit or debit",
+                "asi": true,
+                "kernelID": "02",
+                "data": ["ContactlessMposPilot", "KernelConfig:20", "ReaderCTLOndevice:000050000000", "ReaderCTLNoOndevice:000050000000",
+                    "TerminalCountryCode:0710", "TerminalRiskManagementData:6C00800000000000","TACDefault:0000000000","TACDenial:FFFFFFFFFF",
+                    "TACOnline:0000000000","TerminalCapabilities:2040C8"]
+            }]
+        }]
+}]}
+

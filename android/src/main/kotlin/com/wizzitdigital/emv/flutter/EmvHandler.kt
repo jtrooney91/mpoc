@@ -34,8 +34,11 @@ class EmvHandler(
     private var enableVibration: Boolean = true
 
     private var isInitialized: Boolean = false
+    private var isDeviceRegistered: Boolean = false
     private var pendingTransactionCallback: ((Map<String, Any?>) -> Unit)? = null
     private var pendingInitCallback: ((Boolean, String?) -> Unit)? = null
+    private var initTimeoutHandler: Handler? = null
+    private val INIT_TIMEOUT_MS = 30000L // 30 seconds timeout
 
     private val httpClient: HttpClient by lazy { HttpClient(baseUrl, authCredentials) }
 
@@ -121,11 +124,15 @@ class EmvHandler(
 
     fun dispose() {
         try {
+            initTimeoutHandler?.removeCallbacksAndMessages(null)
+            initTimeoutHandler = null
             emvAdapter?.let { adapter ->
                 adapter.cancelSession()
             }
             emvAdapter = null
             isInitialized = false
+            isDeviceRegistered = false
+            pendingInitCallback = null
         } catch (e: Exception) {
             // Ignore disposal errors
         }
@@ -630,6 +637,12 @@ class EmvHandler(
     // Method signatures match the actual SDK interface
 
     override fun onAdapterInitComplete(success: Boolean, message: String) {
+        android.util.Log.d("EmvHandler", "onAdapterInitComplete: success=$success, message=$message, pendingInitCallback=${pendingInitCallback != null}")
+        
+        // Cancel timeout
+        initTimeoutHandler?.removeCallbacksAndMessages(null)
+        initTimeoutHandler = null
+        
         isInitialized = success
         if (success) {
             eventListener.onEvent("adapterInitialized", message, null)
@@ -639,14 +652,18 @@ class EmvHandler(
         
         // Invoke the pending init callback
         pendingInitCallback?.let { callback ->
+            android.util.Log.d("EmvHandler", "Calling pendingInitCallback with success=$success")
             mainHandler.post {
                 callback(success, if (success) null else message)
             }
+        } ?: run {
+            android.util.Log.w("EmvHandler", "onAdapterInitComplete called but pendingInitCallback is null!")
         }
         pendingInitCallback = null
     }
 
     override fun onAdapterInitializing() {
+        android.util.Log.d("EmvHandler", "onAdapterInitializing called. pendingInitCallback=${pendingInitCallback != null}")
         eventListener.onEvent("adapterInitializing", "EMV Adapter initializing", null)
     }
 
@@ -674,7 +691,7 @@ class EmvHandler(
         extra1: String,
         extra2: String
     ) {
-        android.util.Log.d("EmvHandler", "onCheckDeviceRegistrationComplete: success=$success, message=$message, merchantId=$merchantId, terminalId=$terminalId")
+        android.util.Log.d("EmvHandler", "onCheckDeviceRegistrationComplete: success=$success, message=$message, merchantId=$merchantId, terminalId=$terminalId, isDeviceRegistered=$isDeviceRegistered")
         
         val result = mapOf<String, Any?>(
             "isRegistered" to success,
@@ -686,13 +703,62 @@ class EmvHandler(
         )
         
         if (success) {
-            // Device is registered - proceed with initAdapter (like native app)
+            // Device is registered - mark flag and proceed with initAdapter
+            isDeviceRegistered = true
             eventListener.onEvent("deviceRegistered", message, result)
             
             emvAdapter?.let { adapter ->
-                android.util.Log.d("EmvHandler", "Device registered, calling initAdapter")
-                adapter.initAdapter()
+                val isMainThread = Looper.getMainLooper().thread == Thread.currentThread()
+                android.util.Log.d("EmvHandler", "Device registered, calling initAdapter. pendingInitCallback=${pendingInitCallback != null}, isMainThread=$isMainThread")
+                
+                // Set up timeout in case onAdapterInitComplete never fires
+                initTimeoutHandler?.removeCallbacksAndMessages(null)
+                initTimeoutHandler = Handler(Looper.getMainLooper())
+                initTimeoutHandler?.postDelayed({
+                    if (pendingInitCallback != null && !isInitialized) {
+                        android.util.Log.w("EmvHandler", "initAdapter timeout - onAdapterInitComplete never called")
+                        pendingInitCallback?.let { callback ->
+                            callback(false, "Initialization timeout - adapter did not complete initialization")
+                        }
+                        pendingInitCallback = null
+                    }
+                }, INIT_TIMEOUT_MS)
+                
+                // Always call initAdapter on main thread - SDK callbacks may come from background threads
+                if (isMainThread) {
+                    try {
+                        adapter.initAdapter()
+                        android.util.Log.d("EmvHandler", "initAdapter() called successfully on main thread")
+                    } catch (e: Exception) {
+                        android.util.Log.e("EmvHandler", "initAdapter() failed: ${e.message}", e)
+                        initTimeoutHandler?.removeCallbacksAndMessages(null)
+                        pendingInitCallback?.let { callback ->
+                            callback(false, "initAdapter failed: ${e.message}")
+                        }
+                        pendingInitCallback = null
+                    }
+                } else {
+                    // Post to main thread
+                    mainHandler.post {
+                        try {
+                            adapter.initAdapter()
+                            android.util.Log.d("EmvHandler", "initAdapter() called successfully on main thread (posted)")
+                        } catch (e: Exception) {
+                            android.util.Log.e("EmvHandler", "initAdapter() failed: ${e.message}", e)
+                            initTimeoutHandler?.removeCallbacksAndMessages(null)
+                            pendingInitCallback?.let { callback ->
+                                callback(false, "initAdapter failed: ${e.message}")
+                            }
+                            pendingInitCallback = null
+                        }
+                    }
+                }
             }
+        } else if (isDeviceRegistered) {
+            // Already confirmed registered - ignore this spurious false callback
+            // This can happen when initAdapter() internally re-triggers checkDeviceRegistration
+            android.util.Log.d("EmvHandler", "Ignoring false callback - device already confirmed registered. pendingInitCallback=${pendingInitCallback != null}")
+            // DO NOT clear pendingInitCallback here - it's waiting for onAdapterInitComplete
         } else {
             // Device NOT registered - emit otpRequired event
             // The FLUTTER APP must show its own OTP input UI (like native app does)
